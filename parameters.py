@@ -1,4 +1,6 @@
-onsite = 0.0#onsite energy in the scattering region
+import math
+
+onsite = 4.0#onsite energy in the scattering region
 
 onsite_l = 0.0  #onsite energy in the left lead
 
@@ -26,11 +28,11 @@ hopping_lc = -0.5 # the hopping inbetween the left lead and scattering region
 
 hopping_rc = -0.5 # the hopping inbetween the right lead and scattering region
 
-chain_length = 2 # the number of atoms in the z direction of the scattering region
+chain_length = 1 # the number of atoms in the z direction of the scattering region
 
 chain_length_y = 1 # this is the number of k in the y direction for the scattering region
 
-chain_length_x = 2 #This is the number of points in the x direction.
+chain_length_x = 1 #This is the number of points in the x direction.
 
 chemical_potential = 0.0
 
@@ -41,7 +43,7 @@ steps = 187 #number of energy points we take
 e_upper_bound = 20.0 # this is the max energy value
 
 e_lower_bound = -20.0# this is the min energy value
-hubbard_interaction = 0.0 # this is the hubbard interaction
+hubbard_interaction = 0.3 # this is the hubbard interaction
 
 voltage_r = [-0.15 * i for i in range(41)]
 
@@ -63,3 +65,12 @@ def conjugate(x):
     b = x.imag
     y = a - 1j * b
     return y
+
+def fermi_function( energy_: complex ):
+    if(temperature == 0):
+        if( energy_.real < chemical_potential ):
+            return 1
+        else:
+            return 0
+    else:
+        return 1 / (1 + math.exp( ( energy_.real - chemical_potential ) / temperature ))
