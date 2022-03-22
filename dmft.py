@@ -28,21 +28,21 @@ class Interacting_GF:
             parameters.chain_length) for r in range(parameters.steps)]
         self.interacting_gf = [create_matrix(
             parameters.chain_length) for r in range(parameters.steps)]
-        #this willgetting the embedding self energies from the leads code
+        # this willgetting the embedding self energies from the leads code
         self.get_effective_matrix()
         self.get_interacting_gf()
 
     def get_effective_matrix(self):
         self_energy = leads_self_energy.EmbeddingSelfEnergy(
             self.kx, self.ky, parameters.voltage_step)
-        #self_energy.plot_self_energy()
+        # self_energy.plot_self_energy()
         for i in range(0, parameters.chain_length-1):
             self.hamiltonian[i][i+1] = parameters.hopping
             self.hamiltonian[i+1][i] = parameters.hopping
         for i in range(0, parameters.chain_length):
             voltage_i = parameters.voltage_l[self.voltage_step] - (i + 1) / (float)(parameters.chain_length + 1) * (
                 parameters.voltage_l[self.voltage_step] - parameters.voltage_r[self.voltage_step])
-            print("The external voltage is on site ",  i, " is ", voltage_i)
+            #print("The external voltage is on site ",  i, " is ", voltage_i)
             self.hamiltonian[i][i] = parameters.onsite + 2 * parameters.hopping_x * \
                 math.cos(self.kx) + 2 * parameters.hopping_y * \
                 math.cos(self.ky) + voltage_i
@@ -116,6 +116,40 @@ def get_spin_occupation(gf_lesser_up: List[complex], gf_lesser_down: List[comple
     return x, y
 
 
+def integrate(gf_1: List[complex], gf_2: List[complex], gf_3: List[complex], r: int):
+    # in this function, the green functions are 1d arrays in energy. this is becasue we have passed the diagonal component of the green fun( lesser, or retarded).The
+    delta_energy = (parameters.e_upper_bound -
+                    parameters.e_lower_bound) / parameters.steps
+    result = 0
+    for i in range(0, parameters.steps):
+        for j in range(0, parameters.steps):
+            if (((i + j - r) >= 0) and ((i + j - r) < parameters.steps)):
+                # this integrates like PHYSICAL REVIEW B 74, 155125 2006
+                # I say the green function is zero outside e_lower_bound and e_upper_bound. This means I need the final green function in the integral to be within an energy of e_lower_bound
+                # and e_upper_bound. The index of 0 corresponds to e_lower_bound. Hence we need i+J-r>0 but in order to be less an energy of e_upper_bound we need i+j-r<steps. These conditions enesure the enrgy of the gf3 greens function to be within (e_upper_bound, e_lower_bound)
+                result = (delta_energy / (2 * parameters.pi)) ** 2 * \
+                    gf_1[i] * gf_2[j] * gf_3[i+j-r] + result
+            else:
+                result = result
+    return result
+
+
+# this creates the entire parameters.energy() array at once
+def self_energy_2nd_order(impurity_gf_up: List[complex], impurity_gf_down: List[complex], impurity_gf_up_lesser: List[complex], impurity_gf_down_lesser: List[complex]):
+    impurity_self_energy = [0 for z in range(0, parameters.steps)]
+
+    # the are calculating the self parameters.energy() sigma_{ii}(E) for each discretized parameters.energy(). To do this we pass the green_fun_{ii} for all energies as we need to integrate over all energies in the integrate function
+    for r in range(0, parameters.steps):
+        impurity_self_energy[r] = parameters.hubbard_interaction ** 2 * (integrate(
+            impurity_gf_up, impurity_gf_down, impurity_gf_down_lesser, r))  # line 3
+        impurity_self_energy[r] += parameters.hubbard_interaction ** 2 * (integrate(
+            impurity_gf_up, impurity_gf_down_lesser, impurity_gf_down_lesser, r))  # line 2
+        impurity_self_energy[r] += parameters.hubbard_interaction ** 2 * (integrate(
+            impurity_gf_up_lesser, impurity_gf_down, impurity_gf_down_lesser, r))  # line 1
+        impurity_self_energy[r] += parameters.hubbard_interaction ** 2 * (integrate(
+            impurity_gf_up_lesser, impurity_gf_down_lesser, [parameters.conjugate(e) for e in impurity_gf_down], r))  # line 4
+    return impurity_self_energy
+
 # this is only used to compare the lesser green functions using two different methods. This is not used in the calculation of the self energies.
 def fluctuation_dissipation(green_function: List[complex]):
     g_lesser = [0 for z in range(0, parameters.steps)]
@@ -137,65 +171,22 @@ def impurity_solver(impurity_gf_up: List[complex], impurity_gf_down: List[comple
         impurity_spin_up, impurity_spin_down = get_spin_occupation(
             impurity_gf_up_lesser, impurity_gf_down_lesser)
 
+    if (parameters.interaction_order == 2):
+        impurity_self_energy_up = self_energy_2nd_order(
+            impurity_gf_up, impurity_gf_down, impurity_gf_up_lesser, impurity_gf_down_lesser)
+        impurity_self_energy_down = self_energy_2nd_order(
+            impurity_gf_down, impurity_gf_up, impurity_gf_down_lesser, impurity_gf_up_lesser)
+        for r in range(0, parameters.steps):
+            impurity_self_energy_up[r] += parameters.hubbard_interaction * impurity_spin_down
+            impurity_self_energy_down[r] += parameters.hubbard_interaction * impurity_spin_up
+
     if (parameters.interaction_order == 1):
         for r in range(0, parameters.steps):
             impurity_self_energy_up[r] = parameters.hubbard_interaction * \
                 impurity_spin_down
             impurity_self_energy_down[r] = parameters.hubbard_interaction * \
                 impurity_spin_up
-            #if (parameters.interaction_order == 2):
-            #local_sigma_up[r][0][0] += parameters.hubbard_interaction * local_spin_down
-            #local_sigma_down[r][0][0] += parameters.hubbard_interaction * local_spin_up
 
-    """
-
-
-
-    for i in range( 0 , parameters.chain_length ):         
-        for r in range( 0 , parameters.steps ):#this sets the impurity green function to the local lattice green function for each lattice site(the i for loop)
-            g_local_up[r][0][0] = g_local_up[r][i][i]
-            g_local_down[r][0][0] = g_local_up[r][i][i]
-                                            
-            local_spin_up , local_spin_down = get_spin_occupation( [ e[0][0] for e in gf_int_lesser_up ] ,  [ e[0][0] for e in gf_int_lesser_down ] )
-            if (parameters.interaction_order == 2):   
-                local_sigma_up = self_energy_calculator( g_local_up , g_local_down ,  gf_int_lesser_up , gf_int_lesser_down )
-                local_sigma_down = self_energy_calculator( g_local_down , g_local_up , gf_int_lesser_down , gf_int_lesser_up )              
-            
-            
-            for r in range( 0 , parameters.steps ):
-                if (parameters.interaction_order == 2): 
-                     local_sigma_up[r][0][0] += parameters.hubbard_interaction * local_spin_down
-                     local_sigma_down[r][0][0] += parameters.hubbard_interaction * local_spin_up
-                elif( parameters.interaction_order == 1 ):
-                    local_sigma_up[r][0][0] = parameters.hubbard_interaction * local_spin_down
-                    local_sigma_down[r][0][0] = parameters.hubbard_interaction * local_spin_up
-                 
-            #this is for when we want to get the anderson impurity self consistently
-                 g_initial_up[r] = 1 / ( ( 1 / g_local_up[r][0][0]) + local_sigma_up[r][0][0] )# this is getting the new dynamical mean field
-                 g_initial_down[r] = 1 / ( ( 1 / g_local_down[r][0][0]) + local_sigma_down[r][0][0] )
-                 
-                 g_local_up[r][0][0]=1/((1/g_initial_up[r])-local_sigma_up[r][0][0])
-                 g_local_down[r][0][0]=1/((1/g_initial_down[r])-local_sigma_down[r][0][0])  
-
-            for r in range(0,parameters.steps ):
-                        differencelist[r]=abs(g_local_up[r][0][0].real-old_green_function[r].real)
-                        differencelist[n+r]=abs(g_local_up[r][0][0].imag-old_green_function[r].imag)
-                        old_green_function[r]=g_local_up[r][0][0]
-            
-            #difference=max(differencelist)
-            difference=0
-
-        for r in range( 0 , parameters.steps ): #this then returns a diagonal self energy
-            self_energy_up[r][i][i] = local_sigma_up[r][0][0]
-            self_energy_down[r][i][i] = local_sigma_down[r][0][0]   
-        spin_up_occup[i] = local_spin_up
-        spin_down_occup[i] = local_spin_down
-
-    self_energy_up_lesser = lesser_se_mb( gf_int_down , gf_int_lesser_down , gf_int_lesser_up )
-    self_energy_down_lesser = lesser_se_mb( gf_int_up , gf_int_lesser_up , gf_int_lesser_down )
-    
-    return self_energy_up , self_energy_down , self_energy_up_lesser , self_energy_down_lesser , spin_up_occup , spin_down_occup
-    """
     return impurity_self_energy_up, impurity_self_energy_down, impurity_spin_up, impurity_spin_down
 
 
@@ -213,10 +204,8 @@ def sum_gf_interacting(r, i, j, gf_interacting_up, gf_interacting_down):
                 / num_k_points)
     return (up, down)
 
-
 def create_matrix(size: int):
     return [[0.0 for x in range(size)] for y in range(size)]
-
 
 def dmft(voltage: int, kx: List[float], ky: List[float]):
     self_energy_mb_up = [
@@ -238,13 +227,13 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
         gf_interacting_down = [[Interacting_GF(kx[i], ky[j], voltage, self_energy_mb_down) for i in range(
             0, parameters.chain_length_x)] for j in range(0, parameters.chain_length_y)]
 
-        #this quantity is the green function which is averaged over all k points.
+        # this quantity is the green function which is averaged over all k points.
         gf_local_up = [create_matrix(parameters.chain_length)
                        for z in range(0, parameters.steps)]
         gf_local_down = [create_matrix(parameters.chain_length)
                          for z in range(0, parameters.steps)]
 
-    #for r, i, j in cartesian(parameters.steps, parameters.chain_length, parameters.chain_length):
+    # for r, i, j in cartesian(parameters.steps, parameters.chain_length, parameters.chain_length):
 
         for r in range(0, parameters.steps):
             for i in range(0, parameters.chain_length):
@@ -254,7 +243,7 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
                     gf_local_up[r][i][j] += up
                     gf_local_down[r][i][j] += down
 
-        #this will compare the new green function with the last green function for convergence
+        # this will compare the new green function with the last green function for convergence
         for r in range(0, parameters.steps):
             for i in range(0, parameters.chain_length):
                 # this is due to the spin_up_occup being of length chain_length
@@ -274,17 +263,20 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
             for i in range(0, parameters.chain_length):
                 impurity_self_energy_up, impurity_self_energy_down, spin_up_occup, spin_down_occup = (
                     impurity_solver([e[i][i] for e in gf_local_up], [e[i][i] for e in gf_local_down]))
-                print("The spin up occupancy for the site, ", i + 1, " is ", spin_up_occup)
-                print("The spin down occupancy for the site, ", i + 1, " is ", spin_down_occup)
-            for r in range(0, parameters.steps):
-                self_energy_mb_up[r][i] = impurity_self_energy_up[r]
-                self_energy_mb_down[r][i] = impurity_self_energy_down[r]
-            
+                """
+                print("The spin up occupancy for the site",
+                      i + 1, " is ", spin_up_occup)
+                print("The spin down occupancy for the site",
+                      i + 1, " is ", spin_down_occup)
+                """
+                for r in range(0, parameters.steps):
+                    self_energy_mb_up[r][i] = impurity_self_energy_up[r]
+                    self_energy_mb_down[r][i] = impurity_self_energy_down[r]
         else:
             break
+        print("The count is ", count, "The difference is ", difference)
 
     for i in range(0, parameters.chain_length):
-
         plt.plot(parameters.energy, [
             e[i][i].real for e in gf_local_up], color='red', label='Real Green up')
         plt.plot(parameters.energy, [
@@ -298,12 +290,26 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
 
     for i in range(0, parameters.chain_length):
         fig = plt.figure()
+        plt.plot(parameters.energy, [
+                 e[i].imag for e in self_energy_mb_down], color='blue', label='imaginary self energy')
+        plt.plot(parameters.energy, [
+                 e[i].real for e in self_energy_mb_down], color='red', label='real self energy')
+        j = i + 1
+        plt.title('Many-body self energy spin down site %i' % j)
+        plt.legend(loc='upper right')
+        plt.xlabel("energy")
+        plt.ylabel("Self Energy")
+        plt.show()
 
+
+    for i in range(0, parameters.chain_length):
+        fig = plt.figure()
         plt.plot(parameters.energy, [
                  e[i].imag for e in self_energy_mb_up], color='blue', label='imaginary self energy')
         plt.plot(parameters.energy, [
                  e[i].real for e in self_energy_mb_up], color='red', label='real self energy')
-        plt.title("Many-body self energy")
+        j = i + 1
+        plt.title('Many-body self energy spin up site %i' % j)
         plt.legend(loc='upper right')
         plt.xlabel("energy")
         plt.ylabel("Self Energy")
@@ -311,8 +317,13 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
 
     #print("The spin up occupaton probability is ", spin_up_occup)
     #print("The spin down occupaton probability is ", spin_down_occup)
-    #if(voltage == 0):#this compares the two methods in equilibrium
+    # if(voltage == 0):#this compares the two methods in equilibrium
         #compare_g_lesser(gf_int_lesser_up , gf_int_up)
+    for i in range(0, parameters.chain_length):
+        print("The spin up occupancy for the site",
+            i + 1, " is ", spin_up_occup)
+        print("The spin down occupancy for the site",
+            i + 1, " is ", spin_down_occup)
     print("The count is ", count)
     return gf_local_up, gf_local_down  # , spin_up_occup, spin_down_occup
 
@@ -335,6 +346,11 @@ def main():
     # voltage step of zero is equilibrium.
     print("The voltage difference is ",
           parameters.voltage_l[parameters.voltage_step] - parameters.voltage_r[parameters.voltage_step])
+    print("The number of sites in the z direction is ", parameters.chain_length)
+    print("The number of sites in the x direction is ", parameters.chain_length_x)
+    print("The number of sites in the y direction is ", parameters.chain_length_y)
+    print("The ky value is ", ky)
+    print("The kx value is ", kx)
 
     green_function_up, green_function_down = dmft(
         parameters.voltage_step, kx, ky)

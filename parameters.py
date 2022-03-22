@@ -1,6 +1,6 @@
 import math
 
-onsite = 4.0#onsite energy in the scattering region
+onsite = 0.0#onsite energy in the scattering region
 
 onsite_l = 0.0  #onsite energy in the left lead
 
@@ -28,17 +28,17 @@ hopping_lc = -0.5 # the hopping inbetween the left lead and scattering region
 
 hopping_rc = -0.5 # the hopping inbetween the right lead and scattering region
 
-chain_length = 1 # the number of atoms in the z direction of the scattering region
+chain_length = 3 # the number of atoms in the z direction of the scattering region
 
-chain_length_y = 1 # this is the number of k in the y direction for the scattering region
+chain_length_y = 2 # this is the number of k in the y direction for the scattering region
 
-chain_length_x = 1 #This is the number of points in the x direction.
+chain_length_x = 2 #This is the number of points in the x direction.
 
 chemical_potential = 0.0
 
 temperature = 0
 
-steps = 187 #number of energy points we take
+steps = 161 #number of energy points we take
 
 e_upper_bound = 20.0 # this is the max energy value
 
@@ -56,7 +56,7 @@ pi = 3.14159265359
 if (hubbard_interaction == 0.0):
     interaction_order = 0 # this is the order the green function will be calculated too in terms of interaction strength. this can be equal to 0 , 1 or 2#
 else:
-    interaction_order = 1
+    interaction_order = 2
 #this needs a tiny imaginary part for convergence in the calculation of the embedding self energy
 energy = [e_lower_bound+( e_upper_bound - e_lower_bound ) / steps * x +0.00000000001 * 1j for x in range(steps)]
 

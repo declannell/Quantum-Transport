@@ -356,7 +356,7 @@ def gf_dmft(voltage: int ): # this function gets the converged green function us
     for r in range( 0 , parameters.steps ):
         spectral_function_up[r] = spectral_function_calculator(gf_int_up[r])
         spectral_function_down[r] = spectral_function_calculator(gf_int_down[r])    
-    """
+
     for i in range( 0, parameters.chain_length ):
         fig = plt.figure()
         
@@ -367,7 +367,7 @@ def gf_dmft(voltage: int ): # this function gets the converged green function us
         plt.xlabel("energy")
         plt.ylabel("Self Energy")  
         plt.show()
-    """
+
     print("The spin up occupaton probability is ", spin_up_occup)
     print("The spin down occupaton probability is ", spin_down_occup)
     if(voltage == 0):#this compares the two methods in equilibrium

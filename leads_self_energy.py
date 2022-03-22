@@ -34,8 +34,6 @@ class EmbeddingSelfEnergy:
 
     def get_self_energy(self):
         #this is based on the paper https://iopscience.iop.org/article/10.1088/0305-4608/14/5/016/meta
-        print("The ky value is ", self.ky)
-        print("The kx value is ", self.kx)
         self.get_transfer_matrix()
         self.sgf()
         self.lead_self_energy()
@@ -49,8 +47,8 @@ class EmbeddingSelfEnergy:
         t_product_l = [0 for r in range(0, parameters.steps)]
         t_product_r = [0 for r in range(0, parameters.steps)]        
         
-        print("Left : Epsilon -voltage - 2*hopping*cos(ky) -2*hopping*cos(kx) = ", parameters.onsite_l + parameters.voltage_l[self.voltage_step] + 2 * parameters.hopping_ly * math.cos(self.ky) + 2 * parameters.hopping_lx * math.cos(self.kx))
-        print("Right: Epsilon -voltage - 2*hopping*cos(ky) -2*hopping*cos(kx) = ", parameters.onsite_r + parameters.voltage_r[self.voltage_step] + 2 * parameters.hopping_ry * math.cos(self.ky) + 2 * parameters.hopping_lx * math.cos(self.kx))
+        #print("Left : Epsilon -voltage - 2*hopping*cos(ky) -2*hopping*cos(kx) = ", parameters.onsite_l + parameters.voltage_l[self.voltage_step] + 2 * parameters.hopping_ly * math.cos(self.ky) + 2 * parameters.hopping_lx * math.cos(self.kx))
+        #print("Right: Epsilon -voltage - 2*hopping*cos(ky) -2*hopping*cos(kx) = ", parameters.onsite_r + parameters.voltage_r[self.voltage_step] + 2 * parameters.hopping_ry * math.cos(self.ky) + 2 * parameters.hopping_lx * math.cos(self.kx))
   
             #print(-self.parameters.onsite_l-2*self.parameters.hopping_ly*math.cos(k_y))
         for r in range(0, parameters.steps):
