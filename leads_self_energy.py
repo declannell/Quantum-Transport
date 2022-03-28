@@ -97,7 +97,6 @@ class EmbeddingSelfEnergy:
         f = open('/home/declan/green_function_code/green_function/textfiles/embedding_self_energy.txt', 'w')
 
         for r in range(0, parameters.steps ):
-            
             f.write(str(parameters.energy[r].real) )
             f.write( "," )
             f.write(str(self.self_energy_left[r].real))

@@ -82,6 +82,28 @@ class Noninteracting_GF:
             row_string = " ".join((str(r).rjust(5, " ") for r in self.hamiltonian[i])) #rjust adds padding, join connects them all
             print(row_string)
 
+def analytic_gf_1site(gf_int_up):#this the analytic soltuion for the noninteracting green function when we have a single site in the scattering region
+    analytic_gf = [ 0 for i  in range( parameters.steps ) ]# this assume the interaction between the scattering region and leads is nearest neighbour 
+ 
+    
+    self_energy = leads_self_energy.EmbeddingSelfEnergy(self.kx, self.ky, parameters.voltage_step)
+
+    for r in range( 0 , parameters.steps ):   
+        x = parameters.energy[r].real - parameters.onsite - self_energy.self_energy_left[r].real - self_energy.self_energy_right[r].real
+        y = self_energy.self_energy_left[r].imag + self_energy.self_energy_right[r].imag
+        analytic_gf[r] = x / ( x * x + y * y ) + 1j * y / ( x * x +y * y )
+  
+
+    plt.plot(parameters.energy , [ e[0][0].real for e in gf_int_up] , color='red' , label='real green function' )
+    plt.plot(parameters.energy , [ e[0][0].imag for e in gf_int_up], color='blue', label='imaginary green function' )
+    plt.plot( parameters.energy , [ e.imag for e in analytic_gf ], color='blue', label='analytic imaginary green function' ) 
+    plt.plot( parameters.energy , [e.real for e in analytic_gf] , color='red' , label='analytic real green function') 
+    plt.title(" Analytical Green function and numerical GF")
+    #plt.legend(loc='upper right')
+    plt.xlabel("energy")
+    plt.ylabel("Green Function")  
+    plt.show()
+
 def create_matrix(size: int):
     return [ [ 0.0 for x in range( size ) ] for y in range( size )]
 

@@ -159,6 +159,7 @@ def fluctuation_dissipation(green_function: List[complex]):
     return g_lesser
 
 
+
 def impurity_solver(impurity_gf_up: List[complex], impurity_gf_down: List[complex]):
     impurity_self_energy_up = [0 for z in range(0, parameters.steps)]
     impurity_self_energy_down = [0 for z in range(0, parameters.steps)]
@@ -276,6 +277,13 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
             break
         print("The count is ", count, "The difference is ", difference)
 
+    if (parameters.hubbard_interaction == 0.0  and parameters.voltage_step == 0):
+        spin_up_occup, spin_down_occup = [0 for i in range(parameters.chain_length)], [
+            0 for i in range(parameters.chain_length)]
+        for i in range(0, parameters.chain_length):
+            spin_up_occup[i], spin_down_occup[i] = first_order_self_energy([e[i][i] for e in gf_local_up], [e[i][i] for e in gf_local_down])
+
+
     for i in range(0, parameters.chain_length):
         plt.plot(parameters.energy, [
             e[i][i].real for e in gf_local_up], color='red', label='Real Green up')
@@ -327,6 +335,34 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
     print("The count is ", count)
     return gf_local_up, gf_local_down  # , spin_up_occup, spin_down_occup
 
+def first_order_self_energy(gf_local_up: List[complex], gf_local_down: List[complex]):
+    gf_up_lesser = fluctuation_dissipation(gf_local_up)
+    gf_down_lesser = fluctuation_dissipation(gf_local_down)
+    spin_up_occup, spin_down_occup = get_spin_occupation(gf_up_lesser, gf_down_lesser)
+    return spin_up_occup, spin_down_occup
+
+
+def analytic_gf_1site(gf_int_up):#this the analytic soltuion for the noninteracting green function when we have a single site in the scattering region
+    analytic_gf = [ 0 for i  in range( parameters.steps ) ]# this assume the interaction between the scattering region and leads is nearest neighbour 
+    
+    self_energy = leads_self_energy.EmbeddingSelfEnergy(parameters.pi/2.0, parameters.pi/2.0, parameters.voltage_step)
+    #self_energy.plot_self_energy()
+    for r in range( 0 , parameters.steps ):   
+        x = parameters.energy[r].real - parameters.onsite - self_energy.self_energy_left[r].real - self_energy.self_energy_right[r].real
+        y = self_energy.self_energy_left[r].imag + self_energy.self_energy_right[r].imag
+        analytic_gf[r] = x / ( x * x + y * y ) + 1j * y / ( x * x +y * y )
+  
+
+    plt.plot(parameters.energy , [ e[0][0].real for e in gf_int_up] , color='red' , label='real green function' )
+    plt.plot(parameters.energy , [ e[0][0].imag for e in gf_int_up], color='blue', label='imaginary green function' )
+    plt.plot( parameters.energy , [ e.imag for e in analytic_gf ], color='blue', label='analytic imaginary green function' ) 
+    plt.plot( parameters.energy , [e.real for e in analytic_gf] , color='red' , label='analytic real green function') 
+    plt.title(" Analytical Green function and numerical GF")
+    #plt.legend(loc='upper right')
+    plt.xlabel("energy")
+    plt.ylabel("Green Function")  
+    plt.show()
+
 
 def main():
     kx = [0 for m in range(0, parameters.chain_length_x)]
@@ -349,12 +385,13 @@ def main():
     print("The number of sites in the z direction is ", parameters.chain_length)
     print("The number of sites in the x direction is ", parameters.chain_length_x)
     print("The number of sites in the y direction is ", parameters.chain_length_y)
-    print("The ky value is ", ky)
-    print("The kx value is ", kx)
+    #print("The ky value is ", ky)
+    #print("The kx value is ", kx)
 
     green_function_up, green_function_down = dmft(
         parameters.voltage_step, kx, ky)
-
+    if (parameters.chain_length == 1 and parameters.chain_length_x == 1 and parameters.chain_length_y == 1):
+        analytic_gf_1site(green_function_up)
 
 if __name__ == "__main__":  # this will only run if it is a script and not a import module
     main()

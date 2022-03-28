@@ -410,6 +410,7 @@ def compare_g_lesser( g_lesser_up: List[List[List[complex]]], gf_int_up: List[Li
     plt.legend(loc='upper right')
     plt.xlabel("energy")
     plt.ylabel
+    fig = plt.figure() 
     
 def analytic_gf_1site(gf_int_up):#this the analytic soltuion for the noninteracting green function when we have a single site in the scattering region
     analytic_gf = [ 0 for i  in range( parameters.steps ) ]# this assume the interaction between the scattering region and leads is nearest neighbour 
@@ -628,8 +629,10 @@ def current_voltage_graph():#this will create a current vs voltage graph for sev
         green_function_up, green_function_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup , gf_int_lesser_up = gf_dmft(i )#we then obtain the gf and stuff for every bias. 
         #magnetisation=[spin_up_occup[i]-spin_down_occup[i] for i in range(0,parameters.chain_length)]
 
-        #if ( parameters.hubbard_interaction == 0):
-            #compare_analytic_gf(green_function_up)
+        if ( parameters.hubbard_interaction == 0):
+            print("Here")
+            analytic_gf_1site(green_function_up)
+
 
         self_energy_left , self_energy_right = embedding_self_energy_retarded()
         
