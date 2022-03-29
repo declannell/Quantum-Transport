@@ -69,7 +69,7 @@ class Interacting_GF:
             for i in range(0, parameters.chain_length):
                 for j in range(0, parameters.chain_length):
                     if (i == j):
-                        inverse_green_function[i][j] = parameters.energy[r].real - \
+                        inverse_green_function[i][j] = parameters.energy[r] - \
                             self.effective_hamiltonian[r][i][j] - \
                             self.self_energy_many_body[r][i]
                     else:
@@ -295,7 +295,7 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
         plt.xlabel("energy")
         plt.ylabel("Noninteracting green Function")
         plt.show()
-
+    """
     for i in range(0, parameters.chain_length):
         fig = plt.figure()
         plt.plot(parameters.energy, [
@@ -322,7 +322,7 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
         plt.xlabel("energy")
         plt.ylabel("Self Energy")
         plt.show()
-
+    """
     #print("The spin up occupaton probability is ", spin_up_occup)
     #print("The spin down occupaton probability is ", spin_down_occup)
     # if(voltage == 0):#this compares the two methods in equilibrium
@@ -387,11 +387,12 @@ def main():
     print("The number of sites in the y direction is ", parameters.chain_length_y)
     #print("The ky value is ", ky)
     #print("The kx value is ", kx)
-
+    time_start = time.perf_counter()
     green_function_up, green_function_down = dmft(
         parameters.voltage_step, kx, ky)
     if (parameters.chain_length == 1 and parameters.chain_length_x == 1 and parameters.chain_length_y == 1):
         analytic_gf_1site(green_function_up)
-
+    time_elapsed = (time.perf_counter() - time_start)
+    print(" The time it took the computation is" , time_elapsed)
 if __name__ == "__main__":  # this will only run if it is a script and not a import module
     main()

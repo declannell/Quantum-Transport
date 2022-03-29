@@ -191,13 +191,13 @@ def sgn(x: float):
 def analytic_se(voltage_step: int):
     analytic_se = [0 for i  in range(parameters.steps)]# this assume the interaction between the scattering region and leads is nearest neighbour 
     for i in range(0 , parameters.steps):
-        x = ( parameters.energy()[i].real - parameters.onsite_l - parameters.voltage_l[voltage_step] ) / ( 2 * parameters.hopping_lz )
+        x = (parameters.energy[i].real - parameters.onsite_l - parameters.voltage_l[voltage_step]) / (2 * parameters.hopping_lz)
         #print(x, energy[i])
-        analytic_se[i] = (parameters.hopping_lc() ** 2) * (1 / parameters.hopping_lz) * x 
+        analytic_se[i] = (parameters.hopping_lc ** 2) * (1 / abs(parameters.hopping_lz)) * x 
         if (abs(x) > 1):
-            analytic_se[i] = analytic_se[i] - (parameters.hopping_lc() ** 2) * (1 / parameters.hopping_lz) * (sgn(x) * np.sqrt(abs(x) * abs(x) - 1)) 
+            analytic_se[i] = analytic_se[i] - (parameters.hopping_lc ** 2) * (1 / abs(parameters.hopping_lz)) * (sgn(x) * np.sqrt(abs(x) * abs(x) - 1)) 
         elif( abs(x) < 1):
-            analytic_se[i] = analytic_se[i] - (parameters.hopping_lc() ** 2) * abs((1 / parameters.hopping_lz )) * (1j * np.sqrt(1 - abs(x) * abs(x)))
+            analytic_se[i] = analytic_se[i] - (parameters.hopping_lc ** 2) * abs((1 / abs(parameters.hopping_lz))) * (1j * np.sqrt(1 - abs(x) * abs(x)))
 
     #print(analytic_se)
   
@@ -230,8 +230,9 @@ def main():
     for i in range(0, parameters.chain_length_x):
         for j in range(0, parameters.chain_length_y):
             self_energy = EmbeddingSelfEnergy( kx[i], ky[j], parameters.voltage_step )
-            #self_energy.plot_self_energy()
-    print(self_energy.self_energy_left)
+            self_energy.plot_self_energy()
+            analytic_se(parameters.voltage_step)
+    #print(self_energy.self_energy_left)
 
 if __name__=="__main__":#this will only run if it is a script and not a import module
     main()
