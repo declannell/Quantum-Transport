@@ -158,7 +158,40 @@ def fluctuation_dissipation(green_function: List[complex]):
             green_function[r] - parameters.conjugate(green_function[r]))
     return g_lesser
 
+def coupling_matrices(se_r: List[List[List[complex]]]):# coupling matirces for the current calculation.
+    coupling_mat = [ create_matrix( parameters.chain_length ) for r in range ( parameters.steps ) ]
+    for r in range( 0 , parameters.steps ):
+        for i in range( parameters.chain_length ):
+            for j in range( parameters.chain_length ):                
+                coupling_mat[r][i][j] = 1j * ( se_r[r][i][j] - parameters.conjugate( se_r[r][j][i] ) )
+    return coupling_mat
 
+def transmission(gf_r: Interacting_GF): #this is the green function for each k point
+    coupling_right = coupling_matrices(right_se_r)
+    coupling_left = coupling_matrices(left_se_r)
+
+    transmission = [ [ 0 for i in range( parameters.chain_length )] for r in range( parameters.steps ) ] 
+    warnings.warn('Dear future Declan,  This assumes that the coupling matrices are diagonal. Your sincerely, past Declan ')  
+    for r in range(0, parameters.steps):
+        for i in range(0 , parameters.chain_length ):
+            for j in range(0 , parameters.chain_length ):
+                for k in range(0 , parameters.chain_length ):
+                    transmission[r][i]  = coupling_left[r][i][k] * gf_r[r][k][j] * coupling_right[r][j][j] * parameters.conjugate(gf_r[r][i][j])
+    
+    return transmission
+    
+    
+    
+    """
+    trace = [ 0 for r in range(parameters.steps ) ]
+    
+    for r in range(0 , parameters.steps  ):
+        for i in range(0 , parameters.chain_length ):
+            trace[r] +=  2 * (fermi_function(parameters.energy[r] - parameters.voltage_l[voltage_step] ) - fermi_function(parameters.energy[r] - parameters.voltage_r[voltage_step] ) ) * transmission[r][i] #factor of 2 is due to spin up and down
+
+    current = trace_integrate(trace) 
+    
+    return current"""
 
 def impurity_solver(impurity_gf_up: List[complex], impurity_gf_down: List[complex]):
     impurity_self_energy_up = [0 for z in range(0, parameters.steps)]
@@ -277,12 +310,30 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
             break
         print("The count is ", count, "The difference is ", difference)
 
+    #local_transmission = transmission(gf_interacting_up)
+
     if (parameters.hubbard_interaction == 0.0  and parameters.voltage_step == 0):
         spin_up_occup, spin_down_occup = [0 for i in range(parameters.chain_length)], [
             0 for i in range(parameters.chain_length)]
         for i in range(0, parameters.chain_length):
             spin_up_occup[i], spin_down_occup[i] = first_order_self_energy([e[i][i] for e in gf_local_up], [e[i][i] for e in gf_local_down])
 
+    f = open('/home/declan/green_function_code/green_function/textfiles/local_green_function.txt', 'w')
+    for r in range(0, parameters.steps):
+            f.write(str(gf_local_up[r][0][0].real ))
+            f.write( "," )          
+            f.write(str(gf_local_up[r][0][0].imag ))
+            f.write( "," )
+    f.close()
+
+    f = open('/home/declan/green_function_code/green_function/textfiles/local_se.txt', 'w')
+    for r in range(0, parameters.steps):
+            f.write(str(self_energy_mb_up[r][0].real ))
+            f.write( "," )          
+            f.write(str(self_energy_mb_up[r][0].imag ))
+            f.write( "," )
+    f.close()
+    
 
     for i in range(0, parameters.chain_length):
         plt.plot(parameters.energy, [
@@ -295,7 +346,7 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
         plt.xlabel("energy")
         plt.ylabel("Noninteracting green Function")
         plt.show()
-    """
+    
     for i in range(0, parameters.chain_length):
         fig = plt.figure()
         plt.plot(parameters.energy, [
@@ -322,7 +373,7 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
         plt.xlabel("energy")
         plt.ylabel("Self Energy")
         plt.show()
-    """
+    
     #print("The spin up occupaton probability is ", spin_up_occup)
     #print("The spin down occupaton probability is ", spin_down_occup)
     # if(voltage == 0):#this compares the two methods in equilibrium
@@ -394,5 +445,7 @@ def main():
         analytic_gf_1site(green_function_up)
     time_elapsed = (time.perf_counter() - time_start)
     print(" The time it took the computation is" , time_elapsed)
+
+
 if __name__ == "__main__":  # this will only run if it is a script and not a import module
     main()
