@@ -322,8 +322,12 @@ def gf_dmft(voltage: int ): # this function gets the converged green function us
             gf_int_up[r] = green_function_calculator( hamiltonian ,se_mb_up[r] ,  parameters.energy[r] , r)
             gf_int_down[r] = green_function_calculator( hamiltonian , se_mb_down[r],  parameters.energy[r], r) #should be some indexes here
         
-        gf_int_lesser_up = gf_lesser_nq( gf_int_up , se_mb_up_lesser )
-        gf_int_lesser_down = gf_lesser_nq(  gf_int_down , se_mb_down_lesser )            
+        if (parameters.voltage_step == 0):
+            gf_int_lesser_up = green_lesser_fluctuation_dissiption(gf_int_up)
+            gf_int_lesser_down = green_lesser_fluctuation_dissiption(gf_int_down)
+        else:
+            gf_int_lesser_up = gf_lesser_nq( gf_int_up , se_mb_up_lesser )
+            gf_int_lesser_down = gf_lesser_nq(  gf_int_down , se_mb_down_lesser )            
 
         #spin_up_occup are included within the self energy as well. Spin_up_occup is only included so we can view there value. These self energies are diagonal. We will use them again to obtain a new greens function. Repeat until self consistent.
 

@@ -24,15 +24,15 @@ hopping_ry= -1.0  # the hopping in the y direction of the right lead
 
 hopping_rx = -1.0  #the hopping in the x direction of the left lead
 
-hopping_lc = -1.0 # the hopping inbetween the left lead and scattering region
+hopping_lc = -1 # the hopping inbetween the left lead and scattering region
 
-hopping_rc = -1.0 # the hopping inbetween the right lead and scattering region
+hopping_rc = -1 # the hopping inbetween the right lead and scattering region
 
 chain_length = 1 # the number of atoms in the z direction of the scattering region
 
-chain_length_y = 160 # this is the number of k in the y direction for the scattering region
+chain_length_y = 1# this is the number of k in the y direction for the scattering region
 
-chain_length_x = 160 #This is the number of points in the x direction.
+chain_length_x = 1 #This is the number of points in the x direction.
 
 chemical_potential = 0.0
 
@@ -54,7 +54,7 @@ voltage_step = 0 # voltage step of zero is equilibrium. This is an integer and h
 pi = 3.14159265359
 
 if (hubbard_interaction == 0.0):
-    interaction_order = 0 # this is the order the green function will be calculated too in terms of interaction strength. this can be equal to 0 , 1 or 2#
+    interaction_order = 0.0 # this is the order the green function will be calculated too in terms of interaction strength. this can be equal to 0 , 1 or 2#
 else:
     interaction_order = 2
 #this needs a tiny imaginary part for convergence in the calculation of the embedding self energy

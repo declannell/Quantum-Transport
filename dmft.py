@@ -7,6 +7,7 @@ import noninteracting_gf
 import parameters
 import warnings
 from typing import List
+import argparse
 
 
 class Interacting_GF:
@@ -151,6 +152,8 @@ def self_energy_2nd_order(impurity_gf_up: List[complex], impurity_gf_down: List[
     return impurity_self_energy
 
 # this is only used to compare the lesser green functions using two different methods. This is not used in the calculation of the self energies.
+
+
 def fluctuation_dissipation(green_function: List[complex]):
     g_lesser = [0 for z in range(0, parameters.steps)]
     for r in range(0, parameters.steps):
@@ -158,30 +161,37 @@ def fluctuation_dissipation(green_function: List[complex]):
             green_function[r] - parameters.conjugate(green_function[r]))
     return g_lesser
 
-def coupling_matrices(se_r: List[List[List[complex]]]):# coupling matirces for the current calculation.
-    coupling_mat = [ create_matrix( parameters.chain_length ) for r in range ( parameters.steps ) ]
-    for r in range( 0 , parameters.steps ):
-        for i in range( parameters.chain_length ):
-            for j in range( parameters.chain_length ):                
-                coupling_mat[r][i][j] = 1j * ( se_r[r][i][j] - parameters.conjugate( se_r[r][j][i] ) )
+
+# coupling matirces for the current calculation.
+def coupling_matrices(se_r: List[List[List[complex]]]):
+    coupling_mat = [create_matrix(parameters.chain_length)
+                    for r in range(parameters.steps)]
+    for r in range(0, parameters.steps):
+        for i in range(parameters.chain_length):
+            for j in range(parameters.chain_length):
+                coupling_mat[r][i][j] = 1j * \
+                    (se_r[r][i][j] - parameters.conjugate(se_r[r][j][i]))
     return coupling_mat
 
-def transmission(gf_r: Interacting_GF): #this is the green function for each k point
+
+def transmission(gf_r: Interacting_GF):  # this is the green function for each k point
     coupling_right = coupling_matrices(right_se_r)
     coupling_left = coupling_matrices(left_se_r)
 
-    transmission = [ [ 0 for i in range( parameters.chain_length )] for r in range( parameters.steps ) ] 
-    warnings.warn('Dear future Declan,  This assumes that the coupling matrices are diagonal. Your sincerely, past Declan ')  
+    transmission = [[0 for i in range(parameters.chain_length)]
+                    for r in range(parameters.steps)]
+    warnings.warn(
+        'Dear future Declan,  This assumes that the coupling matrices are diagonal. Your sincerely, past Declan ')
     for r in range(0, parameters.steps):
-        for i in range(0 , parameters.chain_length ):
-            for j in range(0 , parameters.chain_length ):
-                for k in range(0 , parameters.chain_length ):
-                    transmission[r][i]  = coupling_left[r][i][k] * gf_r[r][k][j] * coupling_right[r][j][j] * parameters.conjugate(gf_r[r][i][j])
-    
+        for i in range(0, parameters.chain_length):
+            for j in range(0, parameters.chain_length):
+                for k in range(0, parameters.chain_length):
+                    transmission[r][i] = coupling_left[r][i][k] * gf_r[r][k][j] * \
+                        coupling_right[r][j][j] * \
+                        parameters.conjugate(gf_r[r][i][j])
+
     return transmission
-    
-    
-    
+
     """
     trace = [ 0 for r in range(parameters.steps ) ]
     
@@ -193,6 +203,7 @@ def transmission(gf_r: Interacting_GF): #this is the green function for each k p
     
     return current"""
 
+
 def impurity_solver(impurity_gf_up: List[complex], impurity_gf_down: List[complex]):
     impurity_self_energy_up = [0 for z in range(0, parameters.steps)]
     impurity_self_energy_down = [0 for z in range(0, parameters.steps)]
@@ -201,9 +212,8 @@ def impurity_solver(impurity_gf_up: List[complex], impurity_gf_down: List[comple
         impurity_gf_up_lesser = fluctuation_dissipation(impurity_gf_up)
         impurity_gf_down_lesser = fluctuation_dissipation(impurity_gf_down)
 
-    if (parameters.interaction_order > 0):
-        impurity_spin_up, impurity_spin_down = get_spin_occupation(
-            impurity_gf_up_lesser, impurity_gf_down_lesser)
+    impurity_spin_up, impurity_spin_down = get_spin_occupation(
+        impurity_gf_up_lesser, impurity_gf_down_lesser)
 
     if (parameters.interaction_order == 2):
         impurity_self_energy_up = self_energy_2nd_order(
@@ -211,8 +221,10 @@ def impurity_solver(impurity_gf_up: List[complex], impurity_gf_down: List[comple
         impurity_self_energy_down = self_energy_2nd_order(
             impurity_gf_down, impurity_gf_up, impurity_gf_down_lesser, impurity_gf_up_lesser)
         for r in range(0, parameters.steps):
-            impurity_self_energy_up[r] += parameters.hubbard_interaction * impurity_spin_down
-            impurity_self_energy_down[r] += parameters.hubbard_interaction * impurity_spin_up
+            impurity_self_energy_up[r] += parameters.hubbard_interaction * \
+                impurity_spin_down
+            impurity_self_energy_down[r] += parameters.hubbard_interaction * \
+                impurity_spin_up
 
     if (parameters.interaction_order == 1):
         for r in range(0, parameters.steps):
@@ -238,14 +250,16 @@ def sum_gf_interacting(r, i, j, gf_interacting_up, gf_interacting_down):
                 / num_k_points)
     return (up, down)
 
+
 def create_matrix(size: int):
     return [[0.0 for x in range(size)] for y in range(size)]
 
+
 def dmft(voltage: int, kx: List[float], ky: List[float]):
     self_energy_mb_up = [
-        [0 for i in range(0, parameters.steps)]for z in range(0, parameters.steps)]
+        [0 for i in range(0, parameters.chain_length)]for z in range(0, parameters.steps)]
     self_energy_mb_down = [
-        [0 for i in range(0, parameters.steps)]for z in range(0, parameters.steps)]
+        [0 for i in range(0, parameters.chain_length)]for z in range(0, parameters.steps)]
 
     n = parameters.chain_length**2 * parameters.steps
     differencelist = [0 for i in range(0, 2 * n)]
@@ -254,7 +268,7 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
     difference = 100.0
     count = 0
     # these allows us to determine self consistency in the retarded green function
-    while (difference > 0.0001 and count < 15):
+    while (difference > 0.0001 and count < 25):
         count += 1
         gf_interacting_up = [[Interacting_GF(kx[i], ky[j], voltage, self_energy_mb_up) for i in range(
             0, parameters.chain_length_x)] for j in range(0, parameters.chain_length_y)]
@@ -280,7 +294,6 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
         # this will compare the new green function with the last green function for convergence
         for r in range(0, parameters.steps):
             for i in range(0, parameters.chain_length):
-                # this is due to the spin_up_occup being of length chain_length
                 for j in range(0, parameters.chain_length):
                     differencelist[r + i + j] = abs(
                         gf_local_up[r][i][j].real - old_green_function[r][i][j].real)
@@ -312,28 +325,38 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
 
     #local_transmission = transmission(gf_interacting_up)
 
-    if (parameters.hubbard_interaction == 0.0  and parameters.voltage_step == 0):
+    if (parameters.hubbard_interaction == 0.0 and parameters.voltage_step == 0):
         spin_up_occup, spin_down_occup = [0 for i in range(parameters.chain_length)], [
             0 for i in range(parameters.chain_length)]
         for i in range(0, parameters.chain_length):
-            spin_up_occup[i], spin_down_occup[i] = first_order_self_energy([e[i][i] for e in gf_local_up], [e[i][i] for e in gf_local_down])
+            spin_up_occup[i], spin_down_occup[i] = first_order_self_energy(
+                [e[i][i] for e in gf_local_up], [e[i][i] for e in gf_local_down])
 
-    f = open('/home/declan/green_function_code/green_function/textfiles/local_green_function.txt', 'w')
-    for r in range(0, parameters.steps):
-            f.write(str(gf_local_up[r][0][0].real ))
-            f.write( "," )          
-            f.write(str(gf_local_up[r][0][0].imag ))
-            f.write( "," )
-    f.close()
+    parser = argparse.ArgumentParser()
 
-    f = open('/home/declan/green_function_code/green_function/textfiles/local_se.txt', 'w')
-    for r in range(0, parameters.steps):
-            f.write(str(self_energy_mb_up[r][0].real ))
-            f.write( "," )          
-            f.write(str(self_energy_mb_up[r][0].imag ))
-            f.write( "," )
-    f.close()
-    
+    parser.add_argument("-tf", "--textfile", help="Textfiles", type=bool)
+
+    args = parser.parse_args()
+    if(args.textfile == True):
+        f = open('/home/declan/green_function_code/green_function/textfiles/local_gf_%i_k_points_%i_energy.txt' %
+                 (parameters.chain_length_x, parameters.steps), 'w')
+        for r in range(0, parameters.steps):
+            f.write(str(gf_local_up[r][0][0].real))
+            f.write(",")
+            f.write(str(gf_local_up[r][0][0].imag))
+            f.write(",")
+            f.write("\n")
+        f.close()
+
+        if(parameters.hubbard_interaction != 0):
+            f = open('/home/declan/green_function_code/green_function/textfiles/local_se_%i_k_points_%i_energy.txt' %
+                     (parameters.chain_length_x, parameters.steps), 'w')
+            for r in range(0, parameters.steps):
+                f.write(str(self_energy_mb_up[r][0].real))
+                f.write(",")
+                f.write(str(self_energy_mb_up[r][0].imag))
+                f.write("\n")
+            f.close()
 
     for i in range(0, parameters.chain_length):
         plt.plot(parameters.energy, [
@@ -341,77 +364,96 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
         plt.plot(parameters.energy, [
             e[i][i].imag for e in gf_local_up], color='blue', label='Imaginary Green function')
         j = i + 1
-        plt.title('The local Green function site %i' % j)
+        plt.title('The local Green function site % i for %i k points and %i energy points' % (
+            j, parameters.chain_length_x, parameters.steps))
         plt.legend(loc='upper left')
         plt.xlabel("energy")
-        plt.ylabel("Noninteracting green Function")
-        plt.show()
-    
-    for i in range(0, parameters.chain_length):
-        fig = plt.figure()
-        plt.plot(parameters.energy, [
-                 e[i].imag for e in self_energy_mb_down], color='blue', label='imaginary self energy')
-        plt.plot(parameters.energy, [
-                 e[i].real for e in self_energy_mb_down], color='red', label='real self energy')
-        j = i + 1
-        plt.title('Many-body self energy spin down site %i' % j)
-        plt.legend(loc='upper right')
-        plt.xlabel("energy")
-        plt.ylabel("Self Energy")
+        if(parameters.hubbard_interaction == 0):
+            plt.ylabel("Noninteracting green Function")
+        else:
+            plt.ylabel("Interacting green Function")
         plt.show()
 
+    if(parameters.hubbard_interaction != 0):
+        for i in range(0, parameters.chain_length):
+            fig = plt.figure()
+            plt.plot(parameters.energy, [
+                e[i].imag for e in self_energy_mb_down], color='blue', label='imaginary self energy')
+            #plt.plot(parameters.energy, [
+                #e[i].real for e in self_energy_mb_down], color='red', label='real self energy')
+            j = i + 1
+            plt.title('The local self energy site % i (%i k %i energy points)' % (
+                j, parameters.chain_length_x, parameters.steps))
+            plt.legend(loc='upper right')
+            plt.xlabel("energy")
+            plt.ylabel("Self Energy")
+            plt.show()
 
-    for i in range(0, parameters.chain_length):
-        fig = plt.figure()
-        plt.plot(parameters.energy, [
-                 e[i].imag for e in self_energy_mb_up], color='blue', label='imaginary self energy')
-        plt.plot(parameters.energy, [
-                 e[i].real for e in self_energy_mb_up], color='red', label='real self energy')
-        j = i + 1
-        plt.title('Many-body self energy spin up site %i' % j)
-        plt.legend(loc='upper right')
-        plt.xlabel("energy")
-        plt.ylabel("Self Energy")
-        plt.show()
-    
+        for i in range(0, parameters.chain_length):
+            fig = plt.figure()
+            plt.plot(parameters.energy, [
+                e[i].imag for e in self_energy_mb_up], color='blue', label='imaginary self energy')
+            plt.plot(parameters.energy, [
+                e[i].real for e in self_energy_mb_up], color='red', label='real self energy')
+            j = i + 1
+            plt.title('Many-body self energy spin up site %i' % j)
+            plt.legend(loc='upper right')
+            plt.xlabel("energy")
+            plt.ylabel("Self Energy")
+            plt.show()
+
     #print("The spin up occupaton probability is ", spin_up_occup)
     #print("The spin down occupaton probability is ", spin_down_occup)
     # if(voltage == 0):#this compares the two methods in equilibrium
         #compare_g_lesser(gf_int_lesser_up , gf_int_up)
     for i in range(0, parameters.chain_length):
         print("The spin up occupancy for the site",
-            i + 1, " is ", spin_up_occup)
+              i + 1, " is ", spin_up_occup)
         print("The spin down occupancy for the site",
-            i + 1, " is ", spin_down_occup)
+              i + 1, " is ", spin_down_occup)
     print("The count is ", count)
     return gf_local_up, gf_local_down  # , spin_up_occup, spin_down_occup
+
 
 def first_order_self_energy(gf_local_up: List[complex], gf_local_down: List[complex]):
     gf_up_lesser = fluctuation_dissipation(gf_local_up)
     gf_down_lesser = fluctuation_dissipation(gf_local_down)
-    spin_up_occup, spin_down_occup = get_spin_occupation(gf_up_lesser, gf_down_lesser)
+    spin_up_occup, spin_down_occup = get_spin_occupation(
+        gf_up_lesser, gf_down_lesser)
     return spin_up_occup, spin_down_occup
 
 
-def analytic_gf_1site(gf_int_up):#this the analytic soltuion for the noninteracting green function when we have a single site in the scattering region
-    analytic_gf = [ 0 for i  in range( parameters.steps ) ]# this assume the interaction between the scattering region and leads is nearest neighbour 
-    
-    self_energy = leads_self_energy.EmbeddingSelfEnergy(parameters.pi/2.0, parameters.pi/2.0, parameters.voltage_step)
-    #self_energy.plot_self_energy()
-    for r in range( 0 , parameters.steps ):   
-        x = parameters.energy[r].real - parameters.onsite - self_energy.self_energy_left[r].real - self_energy.self_energy_right[r].real
-        y = self_energy.self_energy_left[r].imag + self_energy.self_energy_right[r].imag
-        analytic_gf[r] = x / ( x * x + y * y ) + 1j * y / ( x * x +y * y )
-  
+# this the analytic soltuion for the noninteracting green function when we have a single site in the scattering region
+def analytic_local_gf_1site(gf_int_up: List[List[List[complex]]], kx: List[float], ky: List[float]):
+    # this assume the interaction between the scattering region and leads is nearest neighbour
+    analytic_gf = [0 for i in range(parameters.steps)]
+    for i in range(0, parameters.chain_length_x):
+        for j in range(0, parameters.chain_length_y):
+            self_energy = leads_self_energy.EmbeddingSelfEnergy(
+                kx[i], ky[j], parameters.voltage_step)
+            #self_energy.plot_self_energy()
+            num_k_points = parameters.chain_length_x * parameters.chain_length_y
+            for r in range(0, parameters.steps):
+                x = parameters.energy[r].real - parameters.onsite - 2 * parameters.hopping_x * math.cos(kx[i]) \
+                    - 2 * parameters.hopping_y * math.cos(ky[j]) - self_energy.self_energy_left[r].real - \
+                    self_energy.self_energy_right[r].real
+                y = self_energy.self_energy_left[r].imag + \
+                    self_energy.self_energy_right[r].imag
+                analytic_gf[r] += 1 / num_k_points * (x / (x * x + y * y) + \
+                    1j * y / (x * x + y * y))
 
-    plt.plot(parameters.energy , [ e[0][0].real for e in gf_int_up] , color='red' , label='real green function' )
-    plt.plot(parameters.energy , [ e[0][0].imag for e in gf_int_up], color='blue', label='imaginary green function' )
-    plt.plot( parameters.energy , [ e.imag for e in analytic_gf ], color='blue', label='analytic imaginary green function' ) 
-    plt.plot( parameters.energy , [e.real for e in analytic_gf] , color='red' , label='analytic real green function') 
+    #plt.plot(parameters.energy, [
+            # e[0][0].real for e in gf_int_up], color='red', label='real green function')
+    plt.plot(parameters.energy, [
+             -e[0][0].imag for e in gf_int_up], color='blue', label='imaginary green function')
+    plt.plot(parameters.energy, [-e.imag for e in analytic_gf],
+             color='blue', label='analytic imaginary green function')
+    #plt.plot(parameters.energy, [e.real for e in analytic_gf],
+             #color='red', label='analytic real green function')
     plt.title(" Analytical Green function and numerical GF")
     #plt.legend(loc='upper right')
     plt.xlabel("energy")
-    plt.ylabel("Green Function")  
+    plt.ylabel("Green Function")
     plt.show()
 
 
@@ -441,10 +483,24 @@ def main():
     time_start = time.perf_counter()
     green_function_up, green_function_down = dmft(
         parameters.voltage_step, kx, ky)
-    if (parameters.chain_length == 1 and parameters.chain_length_x == 1 and parameters.chain_length_y == 1):
-        analytic_gf_1site(green_function_up)
+    if (parameters.chain_length ==1 and parameters.hubbard_interaction == 0):
+        analytic_local_gf_1site(green_function_up, kx, ky)
+
+    for i in range(0, parameters.chain_length):
+        plt.plot(parameters.energy, [
+            -e[i][i].imag for e in green_function_up], color='blue', label='Imaginary Green function')
+        j = i + 1
+        plt.title('The local Green function site % i for %i k points and %i energy points' % (
+            j, parameters.chain_length_x, parameters.steps))
+        plt.legend(loc='upper left')
+        plt.xlabel("energy")
+        if(parameters.hubbard_interaction == 0):
+            plt.ylabel("Noninteracting green Function")
+        else:
+            plt.ylabel("Interacting green Function")
+        plt.show()
     time_elapsed = (time.perf_counter() - time_start)
-    print(" The time it took the computation is" , time_elapsed)
+    print(" The time it took the computation is", time_elapsed)
 
 
 if __name__ == "__main__":  # this will only run if it is a script and not a import module

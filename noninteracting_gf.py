@@ -85,7 +85,6 @@ class Noninteracting_GF:
 def analytic_gf_1site(gf_int_up):#this the analytic soltuion for the noninteracting green function when we have a single site in the scattering region
     analytic_gf = [ 0 for i  in range( parameters.steps ) ]# this assume the interaction between the scattering region and leads is nearest neighbour 
  
-    
     self_energy = leads_self_energy.EmbeddingSelfEnergy(self.kx, self.ky, parameters.voltage_step)
 
     for r in range( 0 , parameters.steps ):   
