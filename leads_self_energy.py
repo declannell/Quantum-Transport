@@ -11,37 +11,35 @@ class EmbeddingSelfEnergy:
     voltage_step : float
     self_energy_left: List[complex]
     self_energy_right: List[complex]
-    self_energy_left_lesser: List[complex]
-    self_energy_right_lesser: List[complex]
-    surface_gf_r: List[complex]
-    surface_gf_l: List[complex]
+    
+    #self_energy_left_lesser: List[complex]
+    #self_energy_right_lesser: List[complex]
+    """
     transfer_matrix_l: List[complex]
     transfer_matrix_r: List[complex]
-
+    """
     def __init__(self, _kx: float, _ky: float, _voltage_step: int):
         self.voltage_step = _voltage_step
         self.kx = _kx
         self.ky = _ky  
-        self.transfer_matrix_l = [0 for r in range(parameters.steps)]   
-        self.transfer_matrix_r = [0 for r in range(parameters.steps)] 
         self.self_energy_left = [0 for r in range(parameters.steps)] 
         self.self_energy_right = [0 for r in range(parameters.steps)]
-        self.self_energy_left_lesser = [0 for r in range(parameters.steps)]
-        self.self_energy_right_lesser = [0 for r in range(parameters.steps)]
-        self.surface_gf_r = [0 for r in range(parameters.steps)]
-        self.surface_gf_l = [0 for r in range(parameters.steps)]
+        #self.self_energy_left_lesser = [0 for r in range(parameters.steps)]
+        #self.self_energy_right_lesser = [0 for r in range(parameters.steps)]
         self.get_self_energy()
 
     def get_self_energy(self):
         #this is based on the paper https://iopscience.iop.org/article/10.1088/0305-4608/14/5/016/meta
-        self.get_transfer_matrix()
-        self.sgf()
-        self.lead_self_energy()
-        self.lesser_self_energy()
+        transfer_matrix_l, transfer_matrix_r  = self.get_transfer_matrix()
+        surface_gf_l, surface_gf_r = self.sgf(transfer_matrix_l, transfer_matrix_r)
+        self.lead_self_energy(surface_gf_l, surface_gf_r)
+        #self.lesser_self_energy()
         #self.text_file_retarded()
         #self.text_file_lesser()     
         
     def get_transfer_matrix(self): #this assume t and t_tilde are the same and principal_layer is 1 atom thick
+        transfer_matrix_l = [0 for r in range(parameters.steps)] 
+        transfer_matrix_r = [0 for r in range(parameters.steps)] 
         t_next_l = [0 for r in range(0, parameters.steps)]
         t_next_r = [0 for r in range(0, parameters.steps)]
         t_product_l = [0 for r in range(0, parameters.steps)]
@@ -57,8 +55,8 @@ class EmbeddingSelfEnergy:
             t_product_l[r] = t_next_l[r]
             t_product_r[r] = t_next_r[r]
 
-            self.transfer_matrix_l[r] = t_next_l[r]
-            self.transfer_matrix_r[r] = t_next_r[r]   
+            transfer_matrix_l[r] = t_next_l[r]
+            transfer_matrix_r[r] = t_next_r[r]   
                 
 
         differencelist = [0 for i in range(0, 2 * parameters.steps)]
@@ -72,26 +70,30 @@ class EmbeddingSelfEnergy:
                 t_next_r[r] = t_next_r[r] ** 2 / (1 - 2 * t_next_r[r] ** 2)
                 t_product_l[r] = t_product_l[r] * t_next_l[r]
                 t_product_r[r] = t_product_r[r] * t_next_r[r]
-                self.transfer_matrix_l[r] = self.transfer_matrix_l[r] + t_product_l[r]
-                self.transfer_matrix_r[r] = self.transfer_matrix_r[r] + t_product_r[r]
+                transfer_matrix_l[r] =transfer_matrix_l[r] + t_product_l[r]
+                transfer_matrix_r[r] = transfer_matrix_r[r] + t_product_r[r]
                 
             for r in range(0, parameters.steps):                
-                differencelist[r] = abs(self.transfer_matrix_l[r].real - old_transfer[r].real)
-                differencelist[parameters.steps + r] = abs(self.transfer_matrix_l[r].imag - old_transfer[r].imag)
-                old_transfer[r] = self.transfer_matrix_l[r]
+                differencelist[r] = abs(transfer_matrix_l[r].real - old_transfer[r].real)
+                differencelist[parameters.steps + r] = abs(transfer_matrix_l[r].imag - old_transfer[r].imag)
+                old_transfer[r] = transfer_matrix_l[r]
             difference = max (differencelist)
             #print ("The difference is ", difference)
         #print(" This converged in " ,count, " iterations.\n")
-
-    def sgf(self):
+        return transfer_matrix_l, transfer_matrix_r 
+        
+    def sgf(self, transfer_matrix_l, transfer_matrix_r):
+        surface_gf_l = [0 for r in range(parameters.steps)]
+        surface_gf_r = [0 for r in range(parameters.steps)]
         for r in range(0, parameters.steps):
-            self.surface_gf_l[r] = 1 / (parameters.energy[r] - parameters.voltage_l[self.voltage_step] - parameters.onsite_l - 2 * parameters.hopping_ly * math.cos(self.ky) - 2 * parameters.hopping_lx * math.cos(self.kx) - parameters.hopping_lz * self.transfer_matrix_l[r] )
-            self.surface_gf_r[r] = 1 / (parameters.energy[r] - parameters.voltage_r[self.voltage_step] - parameters.onsite_r - 2 * parameters.hopping_ry * math.cos(self.ky) - 2 * parameters.hopping_lx * math.cos(self.kx) - parameters.hopping_rz * self.transfer_matrix_r[r] )
-    
-    def lead_self_energy(self):
+            surface_gf_l[r] = 1 / (parameters.energy[r] - parameters.voltage_l[self.voltage_step] - parameters.onsite_l - 2 * parameters.hopping_ly * math.cos(self.ky) - 2 * parameters.hopping_lx * math.cos(self.kx) - parameters.hopping_lz * transfer_matrix_l[r] )
+            surface_gf_r[r] = 1 / (parameters.energy[r] - parameters.voltage_r[self.voltage_step] - parameters.onsite_r - 2 * parameters.hopping_ry * math.cos(self.ky) - 2 * parameters.hopping_lx * math.cos(self.kx) - parameters.hopping_rz * transfer_matrix_r[r] )
+        return surface_gf_l, surface_gf_r
+
+    def lead_self_energy(self, surface_gf_l, surface_gf_r):
         for r in range(0,  parameters.steps):
-            self.self_energy_left[r] = parameters.hopping_lc ** 2 * self.surface_gf_l[r]
-            self.self_energy_right[r] = parameters.hopping_rc ** 2 * self.surface_gf_r[r]
+            self.self_energy_left[r] = parameters.hopping_lc ** 2 * surface_gf_l[r]
+            self.self_energy_right[r] = parameters.hopping_rc ** 2 * surface_gf_r[r]
 
     def text_file_retarded(self): #num is the number of k-points
         f = open('/home/declan/green_function_code/green_function/textfiles/embedding_self_energy.txt', 'w')
@@ -231,7 +233,7 @@ def main():
         for j in range(0, parameters.chain_length_y):
             self_energy = EmbeddingSelfEnergy( kx[i], ky[j], parameters.voltage_step )
             self_energy.plot_self_energy()
-            analytic_se(parameters.voltage_step)
+            #analytic_se(parameters.voltage_step)
     #print(self_energy.self_energy_left)
 
 if __name__=="__main__":#this will only run if it is a script and not a import module
