@@ -30,20 +30,20 @@ hopping_rc = -1 # the hopping inbetween the right lead and scattering region
 
 chain_length = 1 # the number of atoms in the z direction of the scattering region
 
-chain_length_y = 320# this is the number of k in the y direction for the scattering region
+chain_length_y = 100# this is the number of k in the y direction for the scattering region
 
-chain_length_x = 320#This is the number of points in the x direction.
+chain_length_x = 100#This is the number of points in the x direction.
 
 chemical_potential = 0.0
 
 temperature = 0
 
-steps = 401 #number of energy points we take   
+steps = 141 #number of energy points we take   
 
 e_upper_bound = 15.0 # this is the max energy value
 
 e_lower_bound = -15.0# this is the min energy value
-hubbard_interaction = 0.3 # this is the hubbard interaction
+hubbard_interaction = 0.0 # this is the hubbard interaction
 
 voltage_r = [-0.15 * i for i in range(41)]
 

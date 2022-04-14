@@ -8,6 +8,7 @@ import parameters
 import warnings
 from typing import List
 import argparse
+from guppy import hpy
 
 
 class Interacting_GF:
@@ -235,24 +236,43 @@ def impurity_solver(impurity_gf_up: List[complex], impurity_gf_down: List[comple
 
     return impurity_self_energy_up, impurity_self_energy_down, impurity_spin_up, impurity_spin_down
 
+def create_matrix(size: int):
+    return [[0.0 for x in range(size)] for y in range(size)]
 
-def sum_gf_interacting(r, i, j, gf_interacting_up, gf_interacting_down):
-    up = 0.0
-    down = 0.0
+def get_local_gf(kx: List[int], ky: List[int], self_energy_mb_up: List[List[List[complex]]], self_energy_mb_down: List[List[List[complex]]]):
+    gf_local_up = [create_matrix(parameters.chain_length)
+                    for z in range(0, parameters.steps)]
+    gf_local_down = [create_matrix(parameters.chain_length)
+                        for z in range(0, parameters.steps)]
+
     num_k_points = parameters.chain_length_x * parameters.chain_length_y
     for kx_i in range(0, parameters.chain_length_x):
         for ky_i in range(0, parameters.chain_length_y):
-            up += (
-                gf_interacting_up[ky_i][kx_i].interacting_gf[r][i][j]
-                / num_k_points)
-            down += (
-                gf_interacting_down[ky_i][kx_i].interacting_gf[r][i][j]
-                / num_k_points)
-    return (up, down)
+            gf_interacting_up = Interacting_GF(kx[kx_i], ky[ky_i], parameters.voltage_step, self_energy_mb_up)
+            gf_interacting_down = Interacting_GF(kx[kx_i], ky[ky_i], parameters.voltage_step, self_energy_mb_down) 
 
+            for r in range(0, parameters.steps):
+                for i in range(0, parameters.chain_length):
+                    for j in range(0, parameters.chain_length):
+                        gf_local_up[r][i][j] += gf_interacting_up.interacting_gf[r][i][j] / num_k_points
+                        gf_local_down[r][i][j] += gf_interacting_down.interacting_gf[r][i][j] / num_k_points
 
-def create_matrix(size: int):
-    return [[0.0 for x in range(size)] for y in range(size)]
+    return gf_local_up, gf_local_down
+
+def get_difference(gf_local_up: List[List[List[complex]]], old_green_function: List[List[List[complex]]]):
+    n = parameters.chain_length**2 * parameters.steps
+    differencelist = [0 for i in range(0, 2 * n)]
+    for r in range(0, parameters.steps):
+        for i in range(0, parameters.chain_length):
+            for j in range(0, parameters.chain_length):
+                differencelist[r + i + j] = abs(
+                    gf_local_up[r][i][j].real - old_green_function[r][i][j].real)
+                differencelist[n + r + i + j] = abs(
+                    gf_local_up[r][i][j].imag - old_green_function[r][i][j].imag)
+    
+    old_green_function = gf_local_up
+
+    return max(differencelist), old_green_function
 
 
 def dmft(voltage: int, kx: List[float], ky: List[float]):
@@ -261,47 +281,18 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
     self_energy_mb_down = [
         [0 for i in range(0, parameters.chain_length)]for z in range(0, parameters.steps)]
 
-    n = parameters.chain_length**2 * parameters.steps
-    differencelist = [0 for i in range(0, 2 * n)]
+
     old_green_function = [[[1.0 + 1j for x in range(parameters.chain_length)] for y in range(
         parameters.chain_length)] for z in range(0, parameters.steps)]
     difference = 100.0
     count = 0
     # these allows us to determine self consistency in the retarded green function
     while (difference > 0.0001 and count < 25):
-        count += 1
-        gf_interacting_up = [[Interacting_GF(kx[i], ky[j], voltage, self_energy_mb_up) for i in range(
-            0, parameters.chain_length_x)] for j in range(0, parameters.chain_length_y)]
-        gf_interacting_down = [[Interacting_GF(kx[i], ky[j], voltage, self_energy_mb_down) for i in range(
-            0, parameters.chain_length_x)] for j in range(0, parameters.chain_length_y)]
-
+        count += 1       
         # this quantity is the green function which is averaged over all k points.
-        gf_local_up = [create_matrix(parameters.chain_length)
-                       for z in range(0, parameters.steps)]
-        gf_local_down = [create_matrix(parameters.chain_length)
-                         for z in range(0, parameters.steps)]
-
-    # for r, i, j in cartesian(parameters.steps, parameters.chain_length, parameters.chain_length):
-
-        for r in range(0, parameters.steps):
-            for i in range(0, parameters.chain_length):
-                for j in range(0, parameters.chain_length):
-                    (up, down) = sum_gf_interacting(
-                        r, i, j, gf_interacting_up, gf_interacting_down)
-                    gf_local_up[r][i][j] += up
-                    gf_local_down[r][i][j] += down
-
+        gf_local_up, gf_local_down = get_local_gf(kx, ky, self_energy_mb_up, self_energy_mb_down)
         # this will compare the new green function with the last green function for convergence
-        for r in range(0, parameters.steps):
-            for i in range(0, parameters.chain_length):
-                for j in range(0, parameters.chain_length):
-                    differencelist[r + i + j] = abs(
-                        gf_local_up[r][i][j].real - old_green_function[r][i][j].real)
-                    differencelist[n + r + i + j] = abs(
-                        gf_local_up[r][i][j].imag - old_green_function[r][i][j].imag)
-                    old_green_function[r][i][j] = gf_local_up[r][i][j]
-
-        difference = max(differencelist)
+        difference, old_green_function = get_difference(gf_local_up, old_green_function)
 
         if (difference < 0.0001):
             break
@@ -310,12 +301,6 @@ def dmft(voltage: int, kx: List[float], ky: List[float]):
             for i in range(0, parameters.chain_length):
                 impurity_self_energy_up, impurity_self_energy_down, spin_up_occup, spin_down_occup = (
                     impurity_solver([e[i][i] for e in gf_local_up], [e[i][i] for e in gf_local_down]))
-                """
-                print("The spin up occupancy for the site",
-                      i + 1, " is ", spin_up_occup)
-                print("The spin down occupancy for the site",
-                      i + 1, " is ", spin_down_occup)
-                """
                 for r in range(0, parameters.steps):
                     self_energy_mb_up[r][i] = impurity_self_energy_up[r]
                     self_energy_mb_down[r][i] = impurity_self_energy_down[r]
@@ -458,6 +443,7 @@ def analytic_local_gf_1site(gf_int_up: List[List[List[complex]]], kx: List[float
 
 
 def main():
+    #h = hpy()
     kx = [0 for m in range(0, parameters.chain_length_x)]
     ky = [0 for m in range(0, parameters.chain_length_y)]
     for i in range(0, parameters.chain_length_y):
@@ -485,23 +471,28 @@ def main():
         parameters.voltage_step, kx, ky)
     if (parameters.chain_length ==1 and parameters.hubbard_interaction == 0):
         analytic_local_gf_1site(green_function_up, kx, ky)
-
-    for i in range(0, parameters.chain_length):
-        plt.plot(parameters.energy, [
-            -e[i][i].imag for e in green_function_up], color='blue', label='Imaginary Green function')
-        j = i + 1
-        plt.title('The local Green function site % i for %i k points and %i energy points' % (
-            j, parameters.chain_length_x, parameters.steps))
-        plt.legend(loc='upper left')
-        plt.xlabel("energy")
-        if(parameters.hubbard_interaction == 0):
-            plt.ylabel("Noninteracting green Function")
-        else:
-            plt.ylabel("Interacting green Function")
-        plt.show()
+    else:
+        for i in range(0, parameters.chain_length):
+            plt.plot(parameters.energy, [
+                -e[i][i].imag for e in green_function_up], color='blue', label='Imaginary Green function')
+            j = i + 1
+            plt.title('The local Green function site % i for %i k points and %i energy points' % (
+                j, parameters.chain_length_x, parameters.steps))
+            plt.legend(loc='upper left')
+            plt.xlabel("energy")
+            if(parameters.hubbard_interaction == 0):
+                plt.ylabel("Noninteracting green Function")
+            else:
+                plt.ylabel("Interacting green Function")
+            plt.show()
     time_elapsed = (time.perf_counter() - time_start)
     print(" The time it took the computation is", time_elapsed)
 
-
+    #print(h.heap())
 if __name__ == "__main__":  # this will only run if it is a script and not a import module
     main()
+
+ 
+
+
+
