@@ -1,3 +1,4 @@
+from this import d
 import scipy.linalg as la
 import matplotlib.pyplot as plt
 import math
@@ -15,78 +16,71 @@ class Interacting_GF:
     kx: float
     ky: float
     voltage_step: float
-    hamiltonian: List[List[complex]]
-    effective_hamiltonian: List[List[List[complex]]]
     interacting_gf: List[List[List[complex]]]
-    self_energy_many_body: List[List[List[complex]]]
 
     def __init__(self, _kx: float, _ky: float, _voltage_step: int,
-                 _self_energy_many_body):
+                 _self_energy_many_body: List[List[complex]]):
         self.kx = _kx
         self.ky = _ky
         self.voltage_step = _voltage_step
-        self.self_energy_many_body = _self_energy_many_body
-        self.hamiltonian = create_matrix(parameters.chain_length)
-        self.effective_hamiltonian = [
-            create_matrix(parameters.chain_length)
-            for r in range(parameters.steps)
-        ]
+        self_energy_many_body = _self_energy_many_body
         self.interacting_gf = [
             create_matrix(parameters.chain_length)
             for r in range(parameters.steps)
         ]
         # this willgetting the embedding self energies from the leads code
-        self.get_effective_matrix()
-        self.get_interacting_gf()
+        hamiltonian = self.get_hamiltonian()
+        self.get_interacting_gf(hamiltonian, self_energy_many_body)
 
-    def get_effective_matrix(self):
-        self_energy = leads_self_energy.EmbeddingSelfEnergy(
-            self.kx, self.ky, parameters.voltage_step)
-        # self_energy.plot_self_energy()
+    def get_hamiltonian(self):
+        hamiltonian = create_matrix(parameters.chain_length)
+
         for i in range(0, parameters.chain_length - 1):
-            self.hamiltonian[i][i + 1] = parameters.hopping
-            self.hamiltonian[i + 1][i] = parameters.hopping
+            hamiltonian[i][i + 1] = parameters.hopping
+            hamiltonian[i + 1][i] = parameters.hopping
+
         for i in range(0, parameters.chain_length):
             voltage_i = parameters.voltage_l[self.voltage_step] - (i + 1) / (
                 float)(parameters.chain_length +
                        1) * (parameters.voltage_l[self.voltage_step] -
                              parameters.voltage_r[self.voltage_step])
             #print("The external voltage is on site ",  i, " is ", voltage_i)
-            self.hamiltonian[i][i] = parameters.onsite + 2 * parameters.hopping_x * \
+            hamiltonian[i][i] = parameters.onsite + 2 * parameters.hopping_x * \
                 math.cos(self.kx) + 2 * parameters.hopping_y * \
                 math.cos(self.ky) + voltage_i
-            for j in range(0, parameters.chain_length):
-                for r in range(0, parameters.steps):
-                    self.effective_hamiltonian[r][i][j] = self.hamiltonian[i][
-                        j]
 
-        for r in range(0, parameters.steps):
-            self.effective_hamiltonian[r][0][
-                0] += self_energy.self_energy_left[r]
-            self.effective_hamiltonian[r][-1][
-                -1] += self_energy.self_energy_right[r]
-        """    
-        plt.plot(parameters.energy, [e[0][0].real for e in self.effective_hamiltonian], color='red', label='real effective hamiltonian') 
-        plt.plot(parameters.energy, [e[0][0].imag for e in self.effective_hamiltonian], color='blue', label='Imaginary effective hamiltonian')
-        plt.title("effective hamiltonian")
-        plt.legend(loc='upper left')
-        plt.xlabel("energy")
-        plt.ylabel("effective hamiltonian")  
-        plt.show()   
-        """
+        return hamiltonian
 
-    def get_interacting_gf(self):
+    def get_interacting_gf(self, hamiltonian: List[List[complex]],
+                           self_energy_many_body: List[List[complex]]):
         inverse_green_function = create_matrix(parameters.chain_length)
+        self_energy = leads_self_energy.EmbeddingSelfEnergy(
+            self.kx, self.ky, self.voltage_step)
+
         for r in range(0, parameters.steps):
+            if (parameters.chain_length != 1):
+                inverse_green_function[0][0] = parameters.energy[r] - \
+                        hamiltonian[0][0] - \
+                       self_energy_many_body[r][0] - self_energy.self_energy_left[r]
+                inverse_green_function[parameters.chain_length - 1][parameters.chain_length - 1] = parameters.energy[r] - \
+                    hamiltonian[parameters.chain_length][parameters.chain_length] - \
+                      self_energy_many_body[r][parameters.chain_length] - self_energy.self_energy_right[r]
+            elif (parameters.chain_length == 1):
+                inverse_green_function[0][0] = parameters.energy[r] - \
+                        hamiltonian[0][0] - \
+                       self_energy_many_body[r][0] - self_energy.self_energy_left[r] - self_energy.self_energy_right[r]
+
             for i in range(0, parameters.chain_length):
                 for j in range(0, parameters.chain_length):
-                    if (i == j):
-                        inverse_green_function[i][j] = parameters.energy[r] - \
-                            self.effective_hamiltonian[r][i][j] - \
-                            self.self_energy_many_body[r][i]
-                    else:
+                    if (i == j
+                            and (i != 0 or i != parameters.chain_length - 1)):
+
+                        inverse_green_function[i][i] = parameters.energy[r] - \
+                            hamiltonian[i][i] - \
+                            self_energy_many_body[r][i]
+                    elif (i != j):
                         inverse_green_function[i][j] = - \
-                            self.effective_hamiltonian[r][i][j]
+                            hamiltonian[i][j]
 
             self.interacting_gf[r] = la.inv(inverse_green_function,
                                             overwrite_a=False,
